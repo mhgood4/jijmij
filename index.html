@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BTC Position Tracker — Single‑File</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827; /* gray-900 */
+      --muted:#94a3b8; /* slate-400 */
+      --text:#e5e7eb; /* gray-200 */
+      --accent:#22d3ee; /* cyan-400 */
+      --good:#10b981; /* emerald */
+      --bad:#ef4444; /* red */
+      --border:#1f2937; /* gray-800 */
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial; background:var(--bg); color:var(--text)}
+    header{padding:20px 16px;border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(34,211,238,0.08), transparent)}
+    h1{margin:0;font-size:20px;letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:12px;margin-top:6px}
+    main{max-width:1100px;margin:20px auto;padding:0 12px 60px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+    .grow{flex:1}
+    .kpi{display:flex;gap:16px;flex-wrap:wrap}
+    .kpi .item{min-width:170px}
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .value{font-size:18px;margin-top:4px}
+    .price{font-weight:600;color:var(--accent)}
+    table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:12px}
+    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-weight:600}
+    th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+    th:nth-child(1), td:nth-child(1){text-align:left}
+    tfoot td{font-weight:700;background:#0b1220}
+    input[type="number"], input[type="date"]{
+      width:100%;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit
+    }
+    .btnbar{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 12px;cursor:pointer}
+    button.primary{border-color:var(--accent);box-shadow:0 0 0 1px inset rgba(34,211,238,.2)}
+    .profit-pos{color:var(--good);}
+    .profit-neg{color:var(--bad);}
+    .small{font-size:12px;color:var(--muted)}
+    .provider{display:inline-block;margin-left:8px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BTC Position Tracker</h1>
+    <div class="sub">Auto‑fetch BTC price, compute per‑lot profit, totals & average cost. Everything stays in your browser (localStorage).</div>
+  </header>
+  <main>
+    <div class="row">
+      <div class="card grow">
+        <div class="kpi">
+          <div class="item">
+            <div class="label">Live BTC Price (USD) <span id="provider" class="provider"></span></div>
+            <div class="value price" id="livePrice">—</div>
+            <div class="small" id="lastUpdated">Last update: —</div>
+          </div>
+          <div class="item">
+            <div class="label">Total BTC</div>
+            <div class="value" id="kpiBtc">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Total Cost (USD)</div>
+            <div class="value" id="kpiCost">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Average Entry ($/BTC)</div>
+            <div class="value" id="kpiAvg">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Portfolio Value (USD)</div>
+            <div class="value" id="kpiValue">—</div>
+          </div>
+          <div class="item">
+            <div class="label">Unrealized P/L</div>
+            <div class="value" id="kpiPL">—</div>
+          </div>
+          <div class="item">
+            <div class="label">ROI</div>
+            <div class="value" id="kpiROI">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="card grow">
+        <div class="btnbar" style="margin-bottom:10px">
+          <button class="primary" id="btnAdd">Add Row</button>
+          <button id="btnReset">Reset to Initial</button>
+          <button id="btnSave">Save JSON</button>
+          <input type="file" id="fileInput" accept="application/json" style="display:none">
+          <button id="btnLoad">Load JSON</button>
+          <button id="btnRefresh">Refresh Price</button>
+          <button id="btnInstall">Install App</button>
+          <button id="btnOffline">Enable Offline</button>
+        </div>
+        <div class="small">Edit any cell (Date, BTC, USD Cost). All numbers use dot (.) as decimal separator.</div>
+        <div style="overflow:auto;margin-top:8px">
+          <table id="tbl">
+            <thead>
+              <tr>
+                <th style="min-width:120px">Date</th>
+                <th style="min-width:120px">BTC</th>
+                <th style="min-width:140px">USD Cost</th>
+                <th>Implied Entry ($/BTC)</th>
+                <th>Current Price</th>
+                <th>Position Value</th>
+                <th>P/L ($)</th>
+                <th>ROI %</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+            <tfoot>
+              <tr>
+                <td>Total</td>
+                <td id="tTotBtc"></td>
+                <td id="tTotCost"></td>
+                <td id="tAvg"></td>
+                <td>—</td>
+                <td id="tTotValue"></td>
+                <td id="tTotPL"></td>
+                <td id="tTotROI"></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ======== Data ========
+    const INITIAL_TRANSACTIONS = [
+      {date:"2023-01-20", btc:0.0151,   usd_cost:347.30}, // 0.0151 * 23000
+      {date:"2024-03-19", btc:0.004574, usd_cost:301.84}, // 0.004574 * 66000
+      {date:"2024-12-11", btc:0.010222, usd_cost:1000.00},
+      {date:"2024-12-19", btc:0.009125, usd_cost:900.00},
+      {date:"2025-02-02", btc:0.005723, usd_cost:500.50},
+      {date:"2025-02-04", btc:0.006731, usd_cost:559.00},
+      {date:"2025-11-04", btc:0.010520, usd_cost:1078.92},
+      {date:"2025-11-04", btc:0.005280, usd_cost:538.50},
+      {date:"2025-11-04", btc:0.002580, usd_cost:262.00},
+      {date:"2025-11-04", btc:0.004960, usd_cost:500.00},
+      {date:"2025-11-04", btc:0.005000, usd_cost:500.00}
+    ];
+
+    const LS_KEY = 'btc-tracker-lots-v1';
+
+    function loadLots(){
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return structuredClone(INITIAL_TRANSACTIONS);
+      try { return JSON.parse(raw); } catch(e){ return structuredClone(INITIAL_TRANSACTIONS); }
+    }
+    function saveLots(lots){ localStorage.setItem(LS_KEY, JSON.stringify(lots)); }
+
+    // ======== Price Providers (with fallbacks) ========
+    async function fetchFromCoinbase(){
+      const r = await fetch('https://api.coinbase.com/v2/prices/spot?currency=USD');
+      if(!r.ok) throw new Error('coinbase http');
+      const j = await r.json();
+      const p = parseFloat(j?.data?.amount);
+      if(!Number.isFinite(p)) throw new Error('coinbase parse');
+      return { price:p, provider:'Coinbase' };
+    }
+    async function fetchFromBinance(){
+      const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+      if(!r.ok) throw new Error('binance http');
+      const j = await r.json();
+      const p = parseFloat(j?.price);
+      if(!Number.isFinite(p)) throw new Error('binance parse');
+      return { price:p, provider:'Binance' };
+    }
+    async function fetchFromCoindesk(){
+      const r = await fetch('https://api.coindesk.com/v1/bpi/currentprice/USD.json');
+      if(!r.ok) throw new Error('coindesk http');
+      const j = await r.json();
+      const p = parseFloat(j?.bpi?.USD?.rate_float);
+      if(!Number.isFinite(p)) throw new Error('coindesk parse');
+      return { price:p, provider:'CoinDesk' };
+    }
+
+    async function getLivePrice(){
+      // try in order
+      try { return await fetchFromCoinbase(); } catch(e){}
+      try { return await fetchFromBinance(); } catch(e){}
+      return await fetchFromCoindesk();
+    }
+
+    // ======== UI & Logic ========
+    const tbody = document.getElementById('tbody');
+    const livePriceEl = document.getElementById('livePrice');
+    const providerEl = document.getElementById('provider');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+
+    const kpiBtc = document.getElementById('kpiBtc');
+    const kpiCost = document.getElementById('kpiCost');
+    const kpiAvg = document.getElementById('kpiAvg');
+    const kpiValue = document.getElementById('kpiValue');
+    const kpiPL = document.getElementById('kpiPL');
+    const kpiROI = document.getElementById('kpiROI');
+
+    const tTotBtc = document.getElementById('tTotBtc');
+    const tTotCost = document.getElementById('tTotCost');
+    const tAvg = document.getElementById('tAvg');
+    const tTotValue = document.getElementById('tTotValue');
+    const tTotPL = document.getElementById('tTotPL');
+    const tTotROI = document.getElementById('tTotROI');
+
+    let lots = loadLots();
+    let live = { price: NaN, provider:'' };
+
+    function fmt(n, d=2){
+      if(!Number.isFinite(n)) return '—';
+      return n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+    }
+
+    function render(){
+      tbody.innerHTML = '';
+      let totBtc=0, totCost=0, totValue=0, totPL=0;
+      const price = live.price;
+
+      lots.forEach((lot, idx)=>{
+        const tr = document.createElement('tr');
+
+        // Date
+        const tdDate = document.createElement('td');
+        const inDate = document.createElement('input');
+        inDate.type = 'date';
+        inDate.value = (lot.date || '').slice(0,10);
+        inDate.addEventListener('change', ()=>{ lot.date = inDate.value; saveLots(lots); render();});
+        tdDate.appendChild(inDate);
+
+        // BTC
+        const tdBtc = document.createElement('td');
+        const inBtc = document.createElement('input');
+        inBtc.type = 'number'; inBtc.step = '0.00000001'; inBtc.min = '0';
+        inBtc.value = Number(lot.btc||0);
+        inBtc.addEventListener('input', ()=>{ lot.btc = parseFloat(inBtc.value)||0; saveLots(lots); updateKPIs();});
+        tdBtc.appendChild(inBtc);
+
+        // USD Cost
+        const tdUsd = document.createElement('td');
+        const inUsd = document.createElement('input');
+        inUsd.type = 'number'; inUsd.step = '0.01'; inUsd.min = '0';
+        inUsd.value = Number(lot.usd_cost||0);
+        inUsd.addEventListener('input', ()=>{ lot.usd_cost = parseFloat(inUsd.value)||0; saveLots(lots); updateKPIs();});
+        tdUsd.appendChild(inUsd);
+
+        const implied = (lot.btc>0)? (lot.usd_cost/lot.btc): NaN;
+        const curVal = (Number.isFinite(price))? lot.btc*price : NaN;
+        const pl = (Number.isFinite(curVal))? (curVal - lot.usd_cost): NaN;
+        const roi = (lot.usd_cost>0 && Number.isFinite(pl))? (pl/lot.usd_cost*100): NaN;
+
+        const tdImplied = document.createElement('td'); tdImplied.textContent = fmt(implied,2);
+        const tdCurPrice = document.createElement('td'); tdCurPrice.textContent = fmt(price,0);
+        const tdVal = document.createElement('td'); tdVal.textContent = fmt(curVal,2);
+        const tdPL = document.createElement('td'); tdPL.textContent = fmt(pl,2);
+        tdPL.className = Number.isFinite(pl) ? (pl>=0?'profit-pos':'profit-neg') : '';
+        const tdROI = document.createElement('td'); tdROI.textContent = Number.isFinite(roi)? fmt(roi,2)+'%':'—';
+        tdROI.className = Number.isFinite(roi) ? (roi>=0?'profit-pos':'profit-neg') : '';
+
+        const tdDel = document.createElement('td');
+        const delBtn = document.createElement('button'); delBtn.textContent = '✕';
+        delBtn.addEventListener('click', ()=>{ lots.splice(idx,1); saveLots(lots); render();});
+        tdDel.appendChild(delBtn);
+
+        tr.append(tdDate, tdBtc, tdUsd, tdImplied, tdCurPrice, tdVal, tdPL, tdROI, tdDel);
+        tbody.appendChild(tr);
+
+        // Aggregate
+        totBtc += Number(lot.btc)||0;
+        totCost += Number(lot.usd_cost)||0;
+        if(Number.isFinite(curVal)){
+          totValue += curVal; totPL += (curVal - (Number(lot.usd_cost)||0));
+        }
+      });
+
+      const avg = (totBtc>0)? (totCost/totBtc): NaN;
+      const roiTot = (totCost>0 && Number.isFinite(totPL))? (totPL/totCost*100): NaN;
+
+      // Foot totals
+      tTotBtc.textContent = fmt(totBtc,6);
+      tTotCost.textContent = '$ '+fmt(totCost,2);
+      tAvg.textContent = '$ '+fmt(avg,2);
+      tTotValue.textContent = Number.isFinite(totValue)? '$ '+fmt(totValue,2): '—';
+      tTotPL.textContent = Number.isFinite(totPL)? ( (totPL>=0?'+$ ':'-$ ')+fmt(Math.abs(totPL),2) ): '—';
+      tTotPL.className = Number.isFinite(totPL) ? (totPL>=0?'profit-pos':'profit-neg') : '';
+      tTotROI.textContent = Number.isFinite(roiTot)? fmt(roiTot,2)+'%':'—';
+      tTotROI.className = Number.isFinite(roiTot) ? (roiTot>=0?'profit-pos':'profit-neg') : '';
+
+      // KPIs
+      kpiBtc.textContent = fmt(totBtc,6);
+      kpiCost.textContent = '$ '+fmt(totCost,2);
+      kpiAvg.textContent = '$ '+fmt(avg,2);
+      kpiValue.textContent = Number.isFinite(totValue)? '$ '+fmt(totValue,2): '—';
+      kpiPL.textContent = Number.isFinite(totPL)? ((totPL>=0?'+$ ':'-$ ')+fmt(Math.abs(totPL),2)):'—';
+      kpiPL.className = Number.isFinite(totPL) ? (totPL>=0?'profit-pos':'profit-neg') : '';
+      kpiROI.textContent = Number.isFinite(roiTot)? fmt(roiTot,2)+'%':'—';
+    }
+
+    function updateKPIs(){ saveLots(lots); render(); }
+
+    async function refreshPrice(){
+      try{
+        live = await getLivePrice();
+        livePriceEl.textContent = '$ '+fmt(live.price,0);
+        providerEl.textContent = `via ${live.provider}`;
+        lastUpdatedEl.textContent = 'Last update: '+ new Date().toLocaleString();
+      }catch(e){
+        livePriceEl.textContent = 'Price error';
+        providerEl.textContent = '';
+      }
+      render();
+    }
+
+    // ======== Buttons ========
+    document.getElementById('btnAdd').addEventListener('click', ()=>{
+      lots.push({date:new Date().toISOString().slice(0,10), btc:0, usd_cost:0});
+      saveLots(lots); render();
+    });
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      lots = structuredClone(INITIAL_TRANSACTIONS); saveLots(lots); render();
+    });
+    document.getElementById('btnRefresh').addEventListener('click', refreshPrice);
+
+    // Save JSON
+    document.getElementById('btnSave').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(lots, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'btc_lots.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Load JSON
+    const fileInput = document.getElementById('fileInput');
+    document.getElementById('btnLoad').addEventListener('click', ()=> fileInput.click());
+    fileInput.addEventListener('change', (e)=>{
+      const file = e.target.files?.[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const parsed = JSON.parse(reader.result);
+          if(Array.isArray(parsed)){
+            lots = parsed.map(x=>({date:x.date||'', btc:Number(x.btc)||0, usd_cost:Number(x.usd_cost)||0}));
+            saveLots(lots); render(); refreshPrice();
+          } else alert('Invalid JSON format. Expect an array of {date, btc, usd_cost}');
+        }catch(err){ alert('Failed to parse JSON'); }
+      };
+      reader.readAsText(file);
+      // reset input for next load
+      e.target.value = '';
+    });
+
+    // ======== PWA (manifest + SW) ========
+    let deferredPrompt = null;
+    // Create and attach a manifest dynamically so this works as a single file
+    (function createManifest(){
+      const manifest = {
+        name: "BTC Position Tracker",
+        short_name: "BTC Tracker",
+        start_url: location.pathname,
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#0f172a",
+        icons: [
+          { src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADAAQAAAAAqG5SAAAAAElFTkSuQmCC", sizes: "192x192", type: "image/png" },
+          { src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABQAAAAA1p3yYAAAAAElFTkSuQmCC", sizes: "512x512", type: "image/png" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = url;
+      document.head.appendChild(link);
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = '#0f172a';
+      document.head.appendChild(meta);
+    })();
+
+    // Build a service worker from a Blob so no external files are needed
+    async function registerSW(){
+      if(!('serviceWorker' in navigator)) return false;
+      const swCode = `const CACHE='btc-tracker-v1';
+self.addEventListener('install', e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./']))); self.skipWaiting();});
+self.addEventListener('activate', e=>{e.waitUntil(self.clients.claim());});
+self.addEventListener('fetch', e=>{const req=e.request; e.respondWith(fetch(req).then(res=>{const copy=res.clone(); caches.open(CACHE).then(c=>c.put(req, copy)); return res;}).catch(()=>caches.match(req)));});`;
+      const swUrl = URL.createObjectURL(new Blob([swCode], {type:'text/javascript'}));
+      try{
+        const reg = await navigator.serviceWorker.register(swUrl, { scope: './' });
+        return !!reg;
+      }catch(err){ console.warn('SW register failed', err); return false; }
+    }
+
+    // beforeinstallprompt handler for Install button
+    window.addEventListener('beforeinstallprompt', (e)=>{
+      e.preventDefault();
+      deferredPrompt = e; // show our button when available
+      const btn = document.getElementById('btnInstall');
+      if(btn) btn.disabled = false;
+    });
+
+    // Buttons
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const installBtn = document.getElementById('btnInstall');
+      const offlineBtn = document.getElementById('btnOffline');
+      if(installBtn){
+        installBtn.disabled = true;
+        installBtn.addEventListener('click', async ()=>{
+          if(deferredPrompt){
+            deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            installBtn.disabled = true;
+          } else {
+            alert('Install prompt not available yet. Try again in a moment.');
+          }
+        });
+      }
+      if(offlineBtn){
+        offlineBtn.addEventListener('click', async ()=>{
+          const ok = await registerSW();
+          alert(ok ? 'Offline cache enabled. You can install or use it on HTTPS/localhost.' : 'Service Worker not supported.');
+        });
+      }
+    });
+
+    // ======== Init ========
+    render();
+    refreshPrice();
+    // Auto refresh every 60s
+    setInterval(refreshPrice, 60000);
+  </script>
+</body>
+</html>
