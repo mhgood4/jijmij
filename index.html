@@ -35,13 +35,17 @@
     .price{font-weight:700;color:var(--accent); letter-spacing: .3px;}
     table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:12px}
     thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-weight:600;z-index:25}
-    th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+    th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;font-size:13px}
     th:nth-child(1), td:nth-child(1){text-align:left}
     tfoot td{font-weight:700;background:#0b1220}
     input[type="number"], input[type="date"], input[type="text"]{
-      width:100%;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit
+      width:100%;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit;font-size:14px;letter-spacing:0.3px
     }
-    .btnbar{display:flex;gap:8px;flex-wrap:wrap}
+    .btnbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    @media (max-width: 600px) {
+      .btnbar{justify-content:space-between}
+      .btnbar button{flex:1;min-width:70px;font-size:13px;padding:8px 6px}
+    }
     button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;transition:transform .06s ease, box-shadow .12s ease}
     button:active{transform:translateY(1px)}
     button:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(245,158,11,.55)}
@@ -69,11 +73,19 @@
     #tbl th:nth-child(8),#tbl td:nth-child(8){width:100px}
     #tbl th:nth-child(9),#tbl td:nth-child(9){width:56px;text-align:center}
     td input[type='number']{text-align:right;width:100%}
-    td input[type='date']{width:100%}
+    td input[type='date']{width:100%;font-size:13px;padding:8px;min-width:110px}
+    td input[type='text']{width:100%;font-size:13px;padding:8px}
     html,body{height:100%}
     body{padding-bottom:calc(env(safe-area-inset-bottom) + 16px)}
     button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:44px;font-size:16px}
+    @media (max-width: 600px) {
+      button{min-height:44px;font-size:14px}
+    }
     input{font-size:16px}
+    @media (max-width: 600px) {
+      input{font-size:16px;padding:12px 10px;height:44px;border-radius:8px;width:100%}
+      input[type="date"]{font-size:15px}
+    }
     @supports (backdrop-filter: blur(6px)){
       .btnbar.sticky{backdrop-filter:blur(8px);background:rgba(15,23,42,.7)}
     }
@@ -89,6 +101,17 @@
       .kpi .value{font-size:14px}
       .cardItem .row1{display:flex}
       .cardItem .row1 > div{flex:1}
+      .cardItem{padding:14px;margin-bottom:12px;border-radius:10px}
+      .cardItem input{font-size:16px;padding:10px;height:44px}
+      .cardItem .row1{gap:10px;margin-bottom:12px}
+      .cardItem .muted{font-size:11px;line-height:1.4;margin-top:8px}
+      .cardItem button{width:100%;margin-top:8px;font-size:14px}
+      .kpi{grid-template-columns:repeat(2,1fr);gap:12px}
+      .kpi .item{min-width:100%;padding:12px;background:#0b1220;border:1px solid var(--border);border-radius:10px}
+      header{padding:16px 12px}
+      h1{margin-bottom:4px}
+      .sub{font-size:11px}
+      main{padding:0 8px 80px}
     }
   </style>
 </head>
@@ -139,17 +162,13 @@
         <div class="btnbar sticky" style="margin-bottom:10px">
           <button class="primary" id="btnAdd">Add Row</button>
           <button id="btnReset">Reset to Initial</button>
-          <button id="btnSave">Save JSON</button>
-          <input type="file" id="fileInput" accept="application/json" style="display:none">
-          <button id="btnLoad">Load JSON</button>
           <button id="btnRefresh" style="background:var(--accent);color:#000;font-weight:700">Refresh Price</button>
           <button id="btnShare">Share</button>
           <button id="btnInstall">Install App</button>
-          <button id="btnOffline">Enable Offline</button>
         </div>
         <div class="small">Edit any cell (Date, BTC, USD Cost). All numbers use dot (.) as decimal separator.</div>
-        <div style="overflow:auto;margin-top:8px">
-          <table id="tbl">
+        <div style="overflow:auto;margin-top:8px;-webkit-overflow-scrolling:touch;min-width:0">
+          <table id="tbl" style="min-width:900px">
             <thead>
               <tr>
                 <th>Date</th>
@@ -356,6 +375,7 @@
           const inDate2 = document.createElement('input'); 
           inDate2.type='date'; 
           inDate2.value=(lot.date||'').slice(0,10);
+          inDate2.style.fontSize='14px';
           inDate2.addEventListener('change', ()=>{ lot.date=inDate2.value; saveLots(lots); render();});
           cDate.appendChild(inDate2);
 
@@ -503,31 +523,7 @@
       return { btc: (totBtc||0).toFixed(6), cost: (totCost||0).toFixed(2), avg: Number.isFinite(avg)? avg.toFixed(2):'—', value: Number.isFinite(totValue)? totValue.toFixed(2):'—', pl: Number.isFinite(totPL)? totPL.toFixed(2):'—', roi: Number.isFinite(roiTot)? roiTot.toFixed(2):'—' };
     }
 
-    document.getElementById('btnSave').addEventListener('click', ()=>{
-      const blob = new Blob([JSON.stringify(lots, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'btc_lots.json'; a.click();
-      URL.revokeObjectURL(url);
-    });
 
-    const fileInput = document.getElementById('fileInput');
-    document.getElementById('btnLoad').addEventListener('click', ()=> fileInput.click());
-    fileInput.addEventListener('change', (e)=>{
-      const file = e.target.files?.[0]; if(!file) return;
-      const reader = new FileReader();
-      reader.onload = ()=>{
-        try{
-          const parsed = JSON.parse(reader.result);
-          if(Array.isArray(parsed)){
-            lots = parsed.map(x=>({date:x.date||'', btc:Number(x.btc)||0, usd_cost:Number(x.usd_cost)||0}));
-            saveLots(lots); render(); refreshPrice();
-          } else alert('Invalid JSON format. Expect an array of {date, btc, usd_cost}');
-        }catch(err){ alert('Failed to parse JSON'); }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    });
 
     let deferredPrompt = null;
     (async function createManifest(){
@@ -646,12 +642,7 @@ self.addEventListener('fetch', e=>{const req=e.request; e.respondWith(fetch(req)
           }
         });
       }
-      if(offlineBtn){
-        offlineBtn.addEventListener('click', async ()=>{
-          const ok = await registerSW();
-          alert(ok ? 'Offline cache enabled. You can install or use it on HTTPS/localhost.' : 'Service Worker not supported.');
-        });
-      }
+
     });
 
     (function(){
