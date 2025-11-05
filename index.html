@@ -44,7 +44,68 @@
     .profit-neg{color:var(--bad);}
     .small{font-size:12px;color:var(--muted)}
     .provider{display:inline-block;margin-left:8px;color:var(--muted)}
-  </style>
+      @media (max-width: 600px) {
+      .kpi .item{min-width:120px}
+      th,td{padding:6px 4px;font-size:12px}
+      table{font-size:12px}
+      h1{font-size:16px}
+      .kpi .value{font-size:14px}
+    }
+    .cards{display:none}
+    .cardItem{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
+    .cardItem .row1{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .cardItem .muted{color:var(--muted);font-size:12px}
+    @media (max-width: 600px) {
+      .kpi .item{min-width:120px}
+      th,td{padding:6px 4px;font-size:12px}
+      table{display:none}
+      .cards{display:block}
+      h1{font-size:16px}
+      .kpi .value{font-size:14px}
+    }
+    /* Card view layout improvements */
+    .cardItem .row1 > div{flex:1; min-width:0}
+    .cardItem .row1{gap:8px}
+    .cardItem input{width:100%}
+    @media (max-width: 600px) {
+      .kpi .item{min-width:120px}
+      th,td{padding:6px 4px;font-size:12px}
+      table{display:none}
+      .cards{display:block}
+      h1{font-size:16px}
+      .kpi .value{font-size:14px}
+      /* three equal columns in the card row */
+      .cardItem .row1{display:flex}
+      .cardItem .row1 > div{flex:1}
+    }
+    /* Desktop table alignment & widths */
+    table{table-layout:fixed}
+    #tbl th,#tbl td{vertical-align:middle}
+    #tbl th:nth-child(1),#tbl td:nth-child(1){width:160px;text-align:left}
+    #tbl th:nth-child(2),#tbl td:nth-child(2){width:120px}
+    #tbl th:nth-child(3),#tbl td:nth-child(3){width:140px}
+    #tbl th:nth-child(4),#tbl td:nth-child(4){width:140px}
+    #tbl th:nth-child(5),#tbl td:nth-child(5){width:120px}
+    #tbl th:nth-child(6),#tbl td:nth-child(6){width:140px}
+    #tbl th:nth-child(7),#tbl td:nth-child(7){width:120px}
+    #tbl th:nth-child(8),#tbl td:nth-child(8){width:100px}
+    #tbl th:nth-child(9),#tbl td:nth-child(9){width:56px;text-align:center}
+    td input[type='number']{text-align:right;width:100%}
+    td input[type='date']{width:100%}
+    /* KPIs uniform grid */
+    .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+    @media (max-width: 600px) {
+      .kpi .item{min-width:120px}
+      th,td{padding:6px 4px;font-size:12px}
+      table{display:none}
+      .cards{display:block}
+      h1{font-size:16px}
+      .kpi .value{font-size:14px}
+      /* three equal columns in the card row */
+      .cardItem .row1{display:flex}
+      .cardItem .row1 > div{flex:1}
+    }
+</style>
 </head>
 <body>
   <header>
@@ -131,7 +192,8 @@
               </tr>
             </tfoot>
           </table>
-        </div>
+            </div>
+            <div id="cards" class="cards"></div>
       </div>
     </div>
   </main>
@@ -224,6 +286,8 @@
 
     function render(){
       tbody.innerHTML = '';
+      const cards = document.getElementById('cards');
+      if(cards) cards.innerHTML = '';
       let totBtc=0, totCost=0, totValue=0, totPL=0;
       const price = live.price;
 
@@ -264,7 +328,7 @@
         const tdVal = document.createElement('td'); tdVal.textContent = fmt(curVal,2);
         const tdPL = document.createElement('td'); tdPL.textContent = fmt(pl,2);
         tdPL.className = Number.isFinite(pl) ? (pl>=0?'profit-pos':'profit-neg') : '';
-        const tdROI = document.createElement('td'); tdROI.textContent = Number.isFinite(roi)? fmt(roi,2)+'%':'—';
+        const tdROI = document.createElement('td'); tdROI.textContent = Number.isFinite(roi)? fmt(roi,2)+'%':'—'; tdROI.classList.add('col-roi');
         tdROI.className = Number.isFinite(roi) ? (roi>=0?'profit-pos':'profit-neg') : '';
 
         const tdDel = document.createElement('td');
@@ -274,6 +338,50 @@
 
         tr.append(tdDate, tdBtc, tdUsd, tdImplied, tdCurPrice, tdVal, tdPL, tdROI, tdDel);
         tbody.appendChild(tr);
+
+        // ---- Card view (mobile) ----
+        if(cards){
+          const card = document.createElement('div');
+          card.className = 'cardItem';
+          const row1 = document.createElement('div'); row1.className = 'row1';
+
+          // Date input
+          const cDate = document.createElement('div');
+          const inDate2 = document.createElement('input'); inDate2.type='date'; inDate2.value=(lot.date||'').slice(0,10);
+          inDate2.addEventListener('change', ()=>{ lot.date=inDate2.value; saveLots(lots); render();});
+          cDate.appendChild(inDate2);
+
+          // BTC input
+          const cBtc = document.createElement('div');
+          const inBtc2 = document.createElement('input'); inBtc2.type='number'; inBtc2.step='0.00000001'; inBtc2.min='0'; inBtc2.value=Number(lot.btc||0);
+          inBtc2.addEventListener('input', ()=>{ lot.btc=parseFloat(inBtc2.value)||0; saveLots(lots); updateKPIs();});
+          cBtc.appendChild(inBtc2);
+
+          // USD input
+          const cUsd = document.createElement('div');
+          const inUsd2 = document.createElement('input'); inUsd2.type='number'; inUsd2.step='0.01'; inUsd2.min='0'; inUsd2.value=Number(lot.usd_cost||0);
+          inUsd2.addEventListener('input', ()=>{ lot.usd_cost=parseFloat(inUsd2.value)||0; saveLots(lots); updateKPIs();});
+          cUsd.appendChild(inUsd2);
+
+          row1.append(cDate, cBtc, cUsd);
+
+          const desc = document.createElement('div');
+          desc.className='muted';
+          const impliedTxt = Number.isFinite(implied)? '$'+fmt(implied,2):'—';
+          const curTxt = Number.isFinite(price)? '$'+fmt(price,0):'—';
+          const valTxt = Number.isFinite(curVal)? '$'+fmt(curVal,2):'—';
+          const plTxt = Number.isFinite(pl)? (pl>=0?'+$ ':'-$ ')+fmt(Math.abs(pl),2):'—';
+          const roiTxt = Number.isFinite(roi)? fmt(roi,2)+'%':'—';
+          desc.textContent = `Entry ${impliedTxt} • Price ${curTxt} • Value ${valTxt} • P/L ${plTxt} • ROI ${roiTxt}`;
+
+          const delWrap = document.createElement('div');
+          const del2 = document.createElement('button'); del2.textContent='Delete';
+          del2.addEventListener('click', ()=>{ lots.splice(idx,1); saveLots(lots); render();});
+          delWrap.appendChild(del2);
+
+          card.append(row1, desc, delWrap);
+          cards.appendChild(card);
+        }
 
         // Aggregate
         totBtc += Number(lot.btc)||0;
