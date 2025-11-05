@@ -2,22 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link id="appleIcon" rel="apple-touch-icon" sizes="180x180" href="" />
+  <link id="favIcon" rel="icon" type="image/png" sizes="32x32" href="" />
   <title>BTC Position Tracker — Single‑File</title>
   <style>
     :root{
-      --bg:#0f172a; /* slate-900 */
-      --panel:#111827; /* gray-900 */
-      --muted:#94a3b8; /* slate-400 */
-      --text:#e5e7eb; /* gray-200 */
-      --accent:#22d3ee; /* cyan-400 */
-      --good:#10b981; /* emerald */
-      --bad:#ef4444; /* red */
-      --border:#1f2937; /* gray-800 */
+      --bg:#0a0a0a; /* black */
+      --panel:#0f0f10; /* deep black */
+      --muted:#b9b9b9; /* light gray */
+      --text:#f5f5f5; /* near white */
+      --accent:#f59e0b; /* amber-500 (BTC gold) */
+      --good:#22c55e; /* emerald */
+      --bad:#ef4444;  /* red */
+      --border:#2a2a2a; /* dark gray */
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial; background:var(--bg); color:var(--text)}
-    header{padding:20px 16px;border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(34,211,238,0.08), transparent)}
+    header{padding:20px 16px;border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(245,158,11,0.12), rgba(0,0,0,0)); }
     h1{margin:0;font-size:20px;letter-spacing:.2px}
     .sub{color:var(--muted);font-size:12px;margin-top:6px}
     main{max-width:1100px;margin:20px auto;padding:0 12px 60px}
@@ -28,9 +32,9 @@
     .kpi .item{min-width:170px}
     .kpi .label{color:var(--muted);font-size:12px}
     .kpi .value{font-size:18px;margin-top:4px}
-    .price{font-weight:600;color:var(--accent)}
+    .price{font-weight:700;color:var(--accent); letter-spacing: .3px;}
     table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:12px}
-    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-weight:600}
+    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-weight:600;z-index:25}
     th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
     th:nth-child(1), td:nth-child(1){text-align:left}
     tfoot td{font-weight:700;background:#0b1220}
@@ -38,7 +42,12 @@
       width:100%;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit
     }
     .btnbar{display:flex;gap:8px;flex-wrap:wrap}
-    button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 12px;cursor:pointer}
+    button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;transition:transform .06s ease, box-shadow .12s ease}
+    button:active{transform:translateY(1px)}
+    button:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(245,158,11,.55)}
+    button.primary{background:var(--accent);color:#111;border-color:var(--accent);box-shadow:0 0 0 1px inset rgba(0,0,0,.15)}
+    button.primary:hover{filter:brightness(0.98)}
+    button.secondary{background:#111217}
     button.primary{border-color:var(--accent);box-shadow:0 0 0 1px inset rgba(34,211,238,.2)}
     .profit-pos{color:var(--good);}
     .profit-neg{color:var(--bad);}
@@ -105,6 +114,27 @@
       .cardItem .row1{display:flex}
       .cardItem .row1 > div{flex:1}
     }
+    html,body{height:100%}
+    body{padding-bottom:calc(env(safe-area-inset-bottom) + 16px)}
+    button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:44px;font-size:16px}
+    input{font-size:16px}
+    
+    @supports (backdrop-filter: blur(6px)){
+      .btnbar.sticky{backdrop-filter:blur(8px);background:rgba(15,23,42,.7)}
+    }
+    @media (max-width: 600px) {
+      .kpi .item{min-width:120px}
+      th,td{padding:6px 4px;font-size:12px}
+      table{display:none}
+      .cards{display:block}
+      h1{font-size:16px}
+      .kpi .value{font-size:14px}
+      .cardItem .row1{display:flex}
+      .cardItem .row1 > div{flex:1}
+    }
+    input.flash{animation:flashGold .6s ease}
+    @keyframes flashGold{0%{box-shadow:0 0 0 0 rgba(245,158,11,0.45)}50%{box-shadow:0 0 0 4px rgba(245,158,11,0.25)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)} }
+    thead th.sticky-shadow{box-shadow:0 2px 6px rgba(0,0,0,0.35)}
 </style>
 </head>
 <body>
@@ -151,13 +181,14 @@
 
     <div class="row" style="margin-top:14px">
       <div class="card grow">
-        <div class="btnbar" style="margin-bottom:10px">
+        <div class="btnbar sticky" style="margin-bottom:10px">
           <button class="primary" id="btnAdd">Add Row</button>
           <button id="btnReset">Reset to Initial</button>
           <button id="btnSave">Save JSON</button>
           <input type="file" id="fileInput" accept="application/json" style="display:none">
           <button id="btnLoad">Load JSON</button>
-          <button id="btnRefresh">Refresh Price</button>
+          <button id="btnRefresh" style="background:var(--accent);color:#000;font-weight:700">Refresh Price</button>
+          <button id="btnShare">Share</button>
           <button id="btnInstall">Install App</button>
           <button id="btnOffline">Enable Offline</button>
         </div>
@@ -284,6 +315,14 @@
       return n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
     }
 
+    function calcTotals(){
+      let totBtc=0, totCost=0, totValue=0, totPL=0; const price = live.price;
+      lots.forEach(l=>{ totBtc += Number(l.btc)||0; totCost += Number(l.usd_cost)||0; if(Number.isFinite(price)) totValue += (Number(l.btc)||0)*price; });
+      if(Number.isFinite(totValue)) totPL = totValue - totCost;
+      const avg = (totBtc>0)? (totCost/totBtc): NaN; const roiTot = (totCost>0 && Number.isFinite(totPL))? (totPL/totCost*100): NaN;
+      return { btc: (totBtc||0).toFixed(6), cost: (totCost||0).toFixed(2), avg: Number.isFinite(avg)? avg.toFixed(2):'—', value: Number.isFinite(totValue)? totValue.toFixed(2):'—', pl: Number.isFinite(totPL)? totPL.toFixed(2):'—', roi: Number.isFinite(roiTot)? roiTot.toFixed(2):'—' };
+    }
+
     function render(){
       tbody.innerHTML = '';
       const cards = document.getElementById('cards');
@@ -305,17 +344,17 @@
         // BTC
         const tdBtc = document.createElement('td');
         const inBtc = document.createElement('input');
-        inBtc.type = 'number'; inBtc.step = '0.00000001'; inBtc.min = '0';
+        inBtc.type = 'number'; inBtc.step = '0.00000001'; inBtc.min = '0'; inBtc.inputMode = 'decimal'; inBtc.enterKeyHint = 'done';
         inBtc.value = Number(lot.btc||0);
-        inBtc.addEventListener('input', ()=>{ lot.btc = parseFloat(inBtc.value)||0; saveLots(lots); updateKPIs();});
+        inBtc.addEventListener('input', ()=>{ lot.btc = parseFloat(inBtc.value)||0; saveLots(lots); updateKPIs();});('input', ()=>{ lot.btc = parseFloat(inBtc.value)||0; saveLots(lots); updateKPIs();});
         tdBtc.appendChild(inBtc);
 
         // USD Cost
         const tdUsd = document.createElement('td');
         const inUsd = document.createElement('input');
-        inUsd.type = 'number'; inUsd.step = '0.01'; inUsd.min = '0';
+        inUsd.type = 'number'; inUsd.step = '0.01'; inUsd.min = '0'; inUsd.inputMode = 'decimal'; inUsd.enterKeyHint = 'done';
         inUsd.value = Number(lot.usd_cost||0);
-        inUsd.addEventListener('input', ()=>{ lot.usd_cost = parseFloat(inUsd.value)||0; saveLots(lots); updateKPIs();});
+        inUsd.addEventListener('input', ()=>{ lot.usd_cost = parseFloat(inUsd.value)||0; saveLots(lots); updateKPIs();});('input', ()=>{ lot.usd_cost = parseFloat(inUsd.value)||0; saveLots(lots); updateKPIs();});
         tdUsd.appendChild(inUsd);
 
         const implied = (lot.btc>0)? (lot.usd_cost/lot.btc): NaN;
@@ -353,14 +392,14 @@
 
           // BTC input
           const cBtc = document.createElement('div');
-          const inBtc2 = document.createElement('input'); inBtc2.type='number'; inBtc2.step='0.00000001'; inBtc2.min='0'; inBtc2.value=Number(lot.btc||0);
-          inBtc2.addEventListener('input', ()=>{ lot.btc=parseFloat(inBtc2.value)||0; saveLots(lots); updateKPIs();});
+          const inBtc2 = document.createElement('input'); inBtc2.type='number'; inBtc2.step='0.00000001'; inBtc2.min='0'; inBtc2.inputMode='decimal'; inBtc2.enterKeyHint='done'; inBtc2.value=Number(lot.btc||0);
+          inBtc2.addEventListener('input', ()=>{ lot.btc=parseFloat(inBtc2.value)||0; saveLots(lots); updateKPIs();});('input', ()=>{ lot.btc=parseFloat(inBtc2.value)||0; saveLots(lots); updateKPIs();});
           cBtc.appendChild(inBtc2);
 
           // USD input
           const cUsd = document.createElement('div');
-          const inUsd2 = document.createElement('input'); inUsd2.type='number'; inUsd2.step='0.01'; inUsd2.min='0'; inUsd2.value=Number(lot.usd_cost||0);
-          inUsd2.addEventListener('input', ()=>{ lot.usd_cost=parseFloat(inUsd2.value)||0; saveLots(lots); updateKPIs();});
+          const inUsd2 = document.createElement('input'); inUsd2.type='number'; inUsd2.step='0.01'; inUsd2.min='0'; inUsd2.inputMode='decimal'; inUsd2.enterKeyHint='done'; inUsd2.value=Number(lot.usd_cost||0);
+          inUsd2.addEventListener('input', ()=>{ lot.usd_cost=parseFloat(inUsd2.value)||0; saveLots(lots); updateKPIs();});('input', ()=>{ lot.usd_cost=parseFloat(inUsd2.value)||0; saveLots(lots); updateKPIs();});
           cUsd.appendChild(inUsd2);
 
           row1.append(cDate, cBtc, cUsd);
@@ -439,6 +478,25 @@
     });
     document.getElementById('btnRefresh').addEventListener('click', refreshPrice);
 
+    // Share
+    const btnShare = document.getElementById('btnShare');
+    if(btnShare){
+      btnShare.addEventListener('click', ()=>{
+        const totals = calcTotals();
+        const text = `BTC: ${totals.btc}
+Cost: $${totals.cost}
+AVG: $${totals.avg}
+Value: $${totals.value}
+P/L: $${totals.pl} (${totals.roi}%)`;
+        if(navigator.share){
+          navigator.share({ title:'BTC Tracker', text, url: location.href }).catch(()=>{});
+        } else {
+          navigator.clipboard?.writeText(text);
+          alert('Copied totals to clipboard');
+        }
+      });
+    }
+
     // Save JSON
     document.getElementById('btnSave').addEventListener('click', ()=>{
       const blob = new Blob([JSON.stringify(lots, null, 2)], {type:'application/json'});
@@ -471,7 +529,44 @@
     // ======== PWA (manifest + SW) ========
     let deferredPrompt = null;
     // Create and attach a manifest dynamically so this works as a single file
-    (function createManifest(){
+    (async function createManifest(){
+      // build 3D BTC gold coin icon on black (B2-b + circle, style 1)
+      async function generateCoinIcon(size=180){
+        const c=document.createElement('canvas'); c.width=size; c.height=size; const ctx=c.getContext('2d');
+        const cx=size/2, cy=size/2; const r=size*0.36;
+        // background
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,size,size);
+        // soft shadow
+        ctx.save(); ctx.filter='blur(6px)'; ctx.beginPath(); ctx.arc(cx, cy+4, r, 0, Math.PI*2); ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fill(); ctx.restore();
+        // coin gradient (shiny)
+        const g=ctx.createRadialGradient(cx-r*0.3, cy-r*0.35, r*0.1, cx, cy, r);
+        g.addColorStop(0.00,'#fff1b8');
+        g.addColorStop(0.20,'#ffd166');
+        g.addColorStop(0.45,'#f5b11a');
+        g.addColorStop(0.70,'#d8930d');
+        g.addColorStop(1.00,'#a56a00');
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fillStyle=g; ctx.fill();
+        // inner ring
+        ctx.lineWidth=Math.max(2, size*0.02); ctx.strokeStyle='rgba(255,255,255,0.18)';
+        ctx.beginPath(); ctx.arc(cx, cy, r*0.82, 0, Math.PI*2); ctx.stroke();
+        // highlight overlay
+        const hg=ctx.createLinearGradient(cx-r, cy-r, cx+r, cy+r);
+        hg.addColorStop(0,'rgba(255,255,255,0.28)'); hg.addColorStop(0.5,'rgba(255,255,255,0.06)'); hg.addColorStop(1,'rgba(0,0,0,0.18)');
+        ctx.globalCompositeOperation='overlay'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fillStyle=hg; ctx.fill(); ctx.globalCompositeOperation='source-over';
+        // ₿ symbol
+        ctx.fillStyle='#111'; ctx.shadowColor='rgba(0,0,0,0.3)'; ctx.shadowBlur=2; ctx.font=`${Math.round(r*1.35)}px ui-sans-serif, -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial`;
+        ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('₿', cx, cy+ r*0.08);
+        return c.toDataURL('image/png');
+      }
+
+      const iconUrl180 = await generateCoinIcon(180);
+      const iconUrl512 = await generateCoinIcon(512);
+      // attach icons
+      const apple = document.getElementById('appleIcon') || document.querySelector('link[rel="apple-touch-icon"]');
+      if(apple) apple.href = iconUrl180;
+      const fav = document.getElementById('favIcon') || document.querySelector('link[rel="icon"]');
+      if(fav) fav.href = iconUrl180;
+
       const manifest = {
         name: "BTC Position Tracker",
         short_name: "BTC Tracker",
@@ -480,20 +575,14 @@
         background_color: "#0f172a",
         theme_color: "#0f172a",
         icons: [
-          { src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADAAQAAAAAqG5SAAAAAElFTkSuQmCC", sizes: "192x192", type: "image/png" },
-          { src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABQAAAAA1p3yYAAAAAElFTkSuQmCC", sizes: "512x512", type: "image/png" }
+          { src: iconUrl180, sizes: "192x192", type: "image/png" },
+          { src: iconUrl512, sizes: "512x512", type: "image/png" }
         ]
       };
       const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('link');
-      link.rel = 'manifest';
-      link.href = url;
-      document.head.appendChild(link);
-      const meta = document.createElement('meta');
-      meta.name = 'theme-color';
-      meta.content = '#0f172a';
-      document.head.appendChild(meta);
+      const link = document.createElement('link'); link.rel = 'manifest'; link.href = url; document.head.appendChild(link);
+      const meta = document.createElement('meta'); meta.name = 'theme-color'; meta.content = '#0f172a'; document.head.appendChild(meta);
     })();
 
     // Build a service worker from a Blob so no external files are needed
@@ -540,6 +629,38 @@ self.addEventListener('fetch', e=>{const req=e.request; e.respondWith(fetch(req)
           const ok = await registerSW();
           alert(ok ? 'Offline cache enabled. You can install or use it on HTTPS/localhost.' : 'Service Worker not supported.');
         });
+      }
+    });
+
+    // iOS add-to-home hint (only Safari, not standalone)
+    (function(){
+      const ua = navigator.userAgent;
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if(isIOS && !isStandalone){
+        const tip = document.createElement('div');
+        tip.className = 'ios-tip';
+        tip.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;padding:10px 12px;border:1px solid var(--border);background:rgba(15,23,42,.95);color:var(--text);border-radius:12px;z-index:50;padding-bottom:calc(10px + env(safe-area-inset-bottom));font-size:13px;';
+        tip.innerHTML = 'Tip: برای نصب روی iOS، از Safari روی دکمه <b>Share</b> بزن و <b>Add to Home Screen</b> رو انتخاب کن. <button id="closeTip" style="float:right;background:transparent;border:0;color:var(--muted);font-size:16px">✕</button>';
+        document.body.appendChild(tip);
+        document.getElementById('closeTip').addEventListener('click', ()=> tip.remove());
+      }
+    })();
+
+    // header shadow
+    const tblWrap=document.querySelector('main');
+    const ths=[...document.querySelectorAll('thead th')];
+    window.addEventListener('scroll',()=>{
+      const sc=window.scrollY;
+      ths.forEach(th=> th.classList.toggle('sticky-shadow', sc>3));
+    });
+
+    // input flash hook
+    document.addEventListener('input',(e)=>{
+      if(e.target.tagName==='INPUT'){
+        e.target.classList.remove('flash');
+        void e.target.offsetWidth;
+        e.target.classList.add('flash');
       }
     });
 
