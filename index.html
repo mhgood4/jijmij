@@ -34,12 +34,12 @@
     .kpi .value{font-size:18px;margin-top:4px}
     .price{font-weight:700;color:var(--accent); letter-spacing: .3px;}
     table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:12px}
-    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-weight:600;z-index:25}
-    th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;font-size:13px}
+    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-weight:600;z-index:25;height:auto}
+    th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;font-size:13px;height:48px;vertical-align:middle}
     th:nth-child(1), td:nth-child(1){text-align:left}
     tfoot td{font-weight:700;background:#0b1220}
     input[type="number"], input[type="date"], input[type="text"]{
-      width:100%;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit;font-size:14px;letter-spacing:0.3px
+      width:100%;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit;font-size:14px;letter-spacing:0.3px;-webkit-appearance:none;appearance:none;box-sizing:border-box
     }
     .btnbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
     @media (max-width: 600px) {
@@ -72,9 +72,9 @@
     #tbl th:nth-child(7),#tbl td:nth-child(7){width:120px}
     #tbl th:nth-child(8),#tbl td:nth-child(8){width:100px}
     #tbl th:nth-child(9),#tbl td:nth-child(9){width:56px;text-align:center}
-    td input[type='number']{text-align:right;width:100%}
-    td input[type='date']{width:100%;font-size:13px;padding:8px;min-width:110px}
-    td input[type='text']{width:100%;font-size:13px;padding:8px}
+    td input[type='number']{text-align:right;width:100%;height:40px}
+    td input[type='date']{width:100%;font-size:13px;padding:8px;min-width:110px;height:40px;line-height:24px}
+    td input[type='text']{width:100%;font-size:13px;padding:8px;height:40px}
     html,body{height:100%}
     body{padding-bottom:calc(env(safe-area-inset-bottom) + 16px)}
     button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:44px;font-size:16px}
