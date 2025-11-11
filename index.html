@@ -24,6 +24,8 @@
     thead th{background:#0b1220;border:1px solid var(--border);padding:10px;font-weight:600}
     td,th{padding:8px;border:1px solid var(--border);text-align:right}
     td:first-child,th:first-child{text-align:left}
+    tr.buy{background:rgba(34,197,94,0.05)}
+    tr.sell{background:rgba(239,68,68,0.05)}
     input{width:100%;padding:8px;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);font:inherit;box-sizing:border-box}
     button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;font-size:14px}
     button.primary{background:var(--accent);color:#111;font-weight:600}
@@ -76,9 +78,9 @@
         </div>
         <div style="overflow:auto;margin-top:8px">
           <table id="tbl">
-            <thead><tr><th>Date</th><th>BTC</th><th>Cost</th><th>Entry</th><th>Price</th><th>Value</th><th>P/L</th><th>ROI</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Type</th><th>BTC</th><th>Cost</th><th>Entry</th><th>Price</th><th>Value</th><th>P/L</th><th>ROI</th><th></th></tr></thead>
             <tbody id="tbody"></tbody>
-            <tfoot><tr><td>TOTAL</td><td id="tTotBtc">-</td><td id="tTotCost">-</td><td id="tAvg">-</td><td>-</td><td id="tTotValue">-</td><td id="tTotPL">-</td><td id="tTotROI">-</td><td></td></tr></tfoot>
+            <tfoot><tr><td>TOTAL</td><td>-</td><td id="tTotBtc">-</td><td id="tTotCost">-</td><td id="tAvg">-</td><td>-</td><td id="tTotValue">-</td><td id="tTotPL">-</td><td id="tTotROI">-</td><td></td></tr></tfoot>
           </table>
         </div>
         <div id="cards" class="cards"></div>
@@ -88,18 +90,19 @@
 
   <script>
     const INITIAL = [
-      {date:"2023-01-20", btc:0.0151, usd_cost:347.30},
-      {date:"2024-03-19", btc:0.004574, usd_cost:301.84},
-      {date:"2024-12-11", btc:0.010222, usd_cost:1000.00},
-      {date:"2024-12-19", btc:0.009125, usd_cost:900.00},
-      {date:"2025-02-02", btc:0.005723, usd_cost:500.50},
-      {date:"2025-02-04", btc:0.006731, usd_cost:559.00},
-      {date:"2025-11-04", btc:0.010520, usd_cost:1078.92},
-      {date:"2025-11-04", btc:0.005280, usd_cost:538.50},
-      {date:"2025-11-04", btc:0.002580, usd_cost:262.00},
-      {date:"2025-11-04", btc:0.004960, usd_cost:500.00},
-      {date:"2025-11-04", btc:0.005000, usd_cost:500.00},
-      {date:"2025-11-05", btc:0.0098, usd_cost:1000.00}
+      {date:"2023-01-20", type:"buy", btc:0.0151, usd_cost:347.30},
+      {date:"2024-03-19", type:"buy", btc:0.004574, usd_cost:301.84},
+      {date:"2024-12-11", type:"buy", btc:0.010222, usd_cost:1000.00},
+      {date:"2024-12-19", type:"buy", btc:0.009125, usd_cost:900.00},
+      {date:"2025-02-02", type:"buy", btc:0.005723, usd_cost:500.50},
+      {date:"2025-02-04", type:"buy", btc:0.006731, usd_cost:559.00},
+      {date:"2025-11-04", type:"buy", btc:0.010520, usd_cost:1078.92},
+      {date:"2025-11-04", type:"buy", btc:0.005280, usd_cost:538.50},
+      {date:"2025-11-04", type:"buy", btc:0.002580, usd_cost:262.00},
+      {date:"2025-11-04", type:"buy", btc:0.004960, usd_cost:500.00},
+      {date:"2025-11-04", type:"buy", btc:0.005000, usd_cost:500.00},
+      {date:"2025-11-05", type:"buy", btc:0.0098, usd_cost:1000.00},
+      {date:"2025-11-10", type:"sell", btc:0.00704, usd_cost:750.00}
     ];
 
     let lots = JSON.parse(localStorage.getItem('btc_lots') || 'null') || JSON.parse(JSON.stringify(INITIAL));
@@ -162,21 +165,26 @@
         td1.appendChild(in1);
 
         const td2 = document.createElement('td');
+        const sel = document.createElement('select');
+        sel.innerHTML = '<option value="buy">BUY</option><option value="sell">SELL</option>';
+        sel.value = lot.type || 'buy';
+        sel.addEventListener('change', () => {lot.type = sel.value; save();});
+        td2.appendChild(sel);
+
+        const td3 = document.createElement('td');
         const in2 = document.createElement('input');
         in2.type = 'text';
         in2.inputMode = 'decimal';
         in2.addEventListener('change', () => {lot.btc = parseFloat(in2.value) || 0; save(); renderTable();});
-        td2.appendChild(in2);
+        td3.appendChild(in2);
 
-        const td3 = document.createElement('td');
+        const td4 = document.createElement('td');
         const in3 = document.createElement('input');
         in3.type = 'text';
         in3.inputMode = 'decimal';
         in3.addEventListener('change', () => {lot.usd_cost = parseFloat(in3.value) || 0; save(); renderTable();});
-        td3.appendChild(in3);
+        td4.appendChild(in3);
 
-        const td4 = document.createElement('td');
-        td4.textContent = '-';
         const td5 = document.createElement('td');
         td5.textContent = '-';
         const td6 = document.createElement('td');
@@ -186,14 +194,16 @@
         const td8 = document.createElement('td');
         td8.textContent = '-';
         const td9 = document.createElement('td');
+        td9.textContent = '-';
+        const td10 = document.createElement('td');
         const saveBtn = document.createElement('button');
         saveBtn.textContent = 'Save';
         saveBtn.style.background = 'var(--accent)';
         saveBtn.style.color = '#111';
         saveBtn.addEventListener('click', () => {newRowIdx = -1; renderTable();});
-        td9.appendChild(saveBtn);
+        td10.appendChild(saveBtn);
 
-        tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9);
+        tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9, td10);
         tb.appendChild(tr);
 
         if (cards) {
@@ -251,9 +261,17 @@
         }
       }
 
-      const sorted = [...lots].reverse();
-      sorted.forEach(lot => {
+      const sorted = [...lots].sort((a, b) => {
+        const dateA = new Date(a.date || '0000-00-00');
+        const dateB = new Date(b.date || '0000-00-00');
+        return dateB - dateA;
+      });
+
+      sorted.forEach((lot, idx) => {
+        if (newRowIdx >= 0 && lots[0] === lot && idx === 0) return;
         const tr = document.createElement('tr');
+        tr.className = lot.type || 'buy';
+
         const td1 = document.createElement('td');
         const in1 = document.createElement('input');
         in1.type = 'date';
@@ -262,40 +280,52 @@
         td1.appendChild(in1);
 
         const td2 = document.createElement('td');
+        const sel = document.createElement('select');
+        sel.innerHTML = '<option value="buy">BUY</option><option value="sell">SELL</option>';
+        sel.value = lot.type || 'buy';
+        sel.addEventListener('change', () => {lot.type = sel.value; save(); renderTable();});
+        sel.style.background = lot.type === 'sell' ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)';
+        sel.style.color = 'var(--text)';
+        sel.style.border = '1px solid var(--border)';
+        sel.style.padding = '4px';
+        sel.style.borderRadius = '4px';
+        td2.appendChild(sel);
+
+        const td3 = document.createElement('td');
         const in2 = document.createElement('input');
         in2.type = 'text';
         in2.inputMode = 'decimal';
         in2.value = String(lot.btc || 0);
         in2.addEventListener('change', () => {lot.btc = parseFloat(in2.value) || 0; save(); renderTable();});
-        td2.appendChild(in2);
+        td3.appendChild(in2);
 
-        const td3 = document.createElement('td');
+        const td4 = document.createElement('td');
         const in3 = document.createElement('input');
         in3.type = 'text';
         in3.inputMode = 'decimal';
         in3.value = String(lot.usd_cost || 0);
         in3.addEventListener('change', () => {lot.usd_cost = parseFloat(in3.value) || 0; save(); renderTable();});
-        td3.appendChild(in3);
+        td4.appendChild(in3);
 
         const imp = (lot.btc > 0) ? (lot.usd_cost / lot.btc) : NaN;
         const val = Number.isFinite(price) ? (lot.btc * price) : NaN;
         const pl = Number.isFinite(val) ? (val - lot.usd_cost) : NaN;
         const roi = (lot.usd_cost > 0 && Number.isFinite(pl)) ? (pl / lot.usd_cost * 100) : NaN;
 
-        const td4 = document.createElement('td');
-        td4.textContent = fmt(imp, 2);
         const td5 = document.createElement('td');
-        td5.textContent = fmt(price, 0);
+        td5.textContent = fmt(imp, 2);
         const td6 = document.createElement('td');
-        td6.textContent = fmt(val, 2);
+        td6.textContent = fmt(price, 0);
         const td7 = document.createElement('td');
-        td7.textContent = fmt(pl, 2);
-        td7.className = Number.isFinite(pl) ? (pl >= 0 ? 'profit-pos' : 'profit-neg') : '';
+        td7.textContent = fmt(val, 2);
         const td8 = document.createElement('td');
-        td8.textContent = Number.isFinite(roi) ? fmt(roi, 2) + '%' : '-';
-        td8.className = Number.isFinite(roi) ? (roi >= 0 ? 'profit-pos' : 'profit-neg') : '';
-
+        td8.textContent = fmt(pl, 2);
+        td8.className = Number.isFinite(pl) ? (pl >= 0 ? 'profit-pos' : 'profit-neg') : '';
         const td9 = document.createElement('td');
+        td9.textContent = Number.isFinite(roi) ? fmt(roi, 2) + '%' : '-';
+        td9.className = Number.isFinite(roi) ? (roi >= 0 ? 'profit-pos' : 'profit-neg') : '';
+
+        const td10 = document.createElement('td');
         const delBtn = document.createElement('button');
         delBtn.textContent = 'X';
         delBtn.addEventListener('click', () => {
@@ -307,7 +337,7 @@
         });
         td9.appendChild(delBtn);
 
-        tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9);
+        tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9, td10);
         tb.appendChild(tr);
 
         if (cards) {
