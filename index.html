@@ -20,61 +20,65 @@
     .kpi .label{color:var(--muted);font-size:12px}
     .kpi .value{font-size:18px;margin-top:4px;font-weight:700}
     .price{color:var(--accent)}
-    table{width:100%;border:1px solid var(--border);border-radius:12px;border-collapse:collapse;min-width:1000px}
+    table{width:100%;border:1px solid var(--border);border-radius:12px;border-collapse:collapse;min-width:900px}
     thead th{background:#0b1220;border:1px solid var(--border);padding:10px;font-weight:600}
-    td,th{padding:8px;border:1px solid var(--border);text-align:right;font-size:12px}
+    td,th{padding:8px;border:1px solid var(--border);text-align:right}
     td:first-child,th:first-child{text-align:left}
-    tr.buy{background:rgba(34,197,94,0.05)}
-    tr.sell{background:rgba(239,68,68,0.05)}
-    input{width:100%;padding:6px;background:#0b1220;border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;box-sizing:border-box}
-    select{width:100%;padding:6px;background:#0b1220;border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit}
-    button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px}
+    input{width:100%;padding:8px;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);font:inherit;box-sizing:border-box}
+    button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;font-size:14px}
     button.primary{background:var(--accent);color:#111;font-weight:600}
     .profit-pos{color:var(--good)}
     .profit-neg{color:var(--bad)}
-    .btnbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .btnbar{display:flex;gap:8px;flex-wrap:wrap}
     .cards{display:none}
     .cardItem{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
     .cardItem.new-row{border-left:4px solid var(--accent);background:rgba(245,158,11,0.1)}
-    .cardItem.buy{background:rgba(34,197,94,0.05)}
-    .cardItem.sell{background:rgba(239,68,68,0.05)}
+    .cardItem input{margin:4px 0}
+    .cardItem button{width:100%;margin-top:8px}
+    .row1{display:flex;gap:8px;margin-bottom:8px}
+    .row1 > div{flex:1}
+    .new-row{background:rgba(245,158,11,0.15);border-left:4px solid var(--accent)}
     @media (max-width:600px){
       table{display:none}
       .cards{display:block}
       .kpi{grid-template-columns:repeat(2,1fr)}
+      h1{font-size:16px}
     }
   </style>
 </head>
 <body>
   <header>
     <h1>BTC Position Tracker</h1>
-    <div class="sub">Track buy/sell transactions with profit calculation</div>
+    <div class="sub">Auto-fetch BTC price, compute per-lot profit, totals & average cost.</div>
   </header>
   <main>
     <div class="row">
       <div class="card grow">
         <div class="kpi">
-          <div class="item"><div class="label">Live BTC Price</div><div class="value price" id="livePrice">-</div></div>
+          <div class="item"><div class="label">Live BTC Price</div><div class="value price" id="livePrice">-</div><div class="small" id="lastUpdated">Last: -</div></div>
           <div class="item"><div class="label">Total BTC</div><div class="value" id="kpiBtc">-</div></div>
-          <div class="item"><div class="label">Total Invested</div><div class="value" id="kpiCost">-</div></div>
+          <div class="item"><div class="label">Total Cost</div><div class="value" id="kpiCost">-</div></div>
+          <div class="item"><div class="label">Avg Entry</div><div class="value" id="kpiAvg">-</div></div>
           <div class="item"><div class="label">Portfolio Value</div><div class="value" id="kpiValue">-</div></div>
           <div class="item"><div class="label">Unrealized P/L</div><div class="value" id="kpiPL">-</div></div>
+          <div class="item"><div class="label">ROI</div><div class="value" id="kpiROI">-</div></div>
         </div>
       </div>
     </div>
 
     <div class="row" style="margin-top:14px">
       <div class="card grow">
-        <div class="btnbar">
+        <div class="btnbar" style="margin-bottom:10px">
           <button class="primary" id="btnAdd">Add Row</button>
           <button id="btnReset">Reset</button>
           <button id="btnRefresh" style="background:var(--accent);color:#000">Refresh Price</button>
           <button id="btnShare">Share</button>
         </div>
-        <div style="overflow:auto">
+        <div style="overflow:auto;margin-top:8px">
           <table id="tbl">
-            <thead><tr><th>Date</th><th>Type</th><th>BTC</th><th>USD</th><th>Linked To</th><th>Entry</th><th>P/L</th><th>ROI</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>BTC</th><th>Cost</th><th>Entry</th><th>Price</th><th>Value</th><th>P/L</th><th>ROI</th><th></th></tr></thead>
             <tbody id="tbody"></tbody>
+            <tfoot><tr><td>TOTAL</td><td id="tTotBtc">-</td><td id="tTotCost">-</td><td id="tAvg">-</td><td>-</td><td id="tTotValue">-</td><td id="tTotPL">-</td><td id="tTotROI">-</td><td></td></tr></tfoot>
           </table>
         </div>
         <div id="cards" class="cards"></div>
@@ -84,36 +88,54 @@
 
   <script>
     const INITIAL = [
-      {date:"2023-01-20", type:"buy", btc:0.0151, usd_cost:347.30, cost_basis:0},
-      {date:"2024-03-19", type:"buy", btc:0.004574, usd_cost:301.84, cost_basis:0},
-      {date:"2024-12-11", type:"buy", btc:0.010222, usd_cost:1000.00, cost_basis:0},
-      {date:"2024-12-19", type:"buy", btc:0.009125, usd_cost:900.00, cost_basis:0},
-      {date:"2025-02-02", type:"buy", btc:0.005723, usd_cost:500.50, cost_basis:0},
-      {date:"2025-02-04", type:"buy", btc:0.006731, usd_cost:559.00, cost_basis:0},
-      {date:"2025-11-04", type:"buy", btc:0.010520, usd_cost:1078.92, cost_basis:0},
-      {date:"2025-11-04", type:"buy", btc:0.005280, usd_cost:538.50, cost_basis:0},
-      {date:"2025-11-04", type:"buy", btc:0.002580, usd_cost:262.00, cost_basis:0},
-      {date:"2025-11-04", type:"buy", btc:0.004960, usd_cost:500.00, cost_basis:0},
-      {date:"2025-11-04", type:"buy", btc:0.005000, usd_cost:500.00, cost_basis:0},
-      {date:"2025-11-05", type:"buy", btc:0.0098, usd_cost:1000.00, cost_basis:0},
-      {date:"2025-11-10", type:"sell", btc:0.00704, usd_cost:750.00, cost_basis:630, linked_to:11}
+      {date:"2023-01-20", btc:0.0151, usd_cost:347.30},
+      {date:"2024-03-19", btc:0.004574, usd_cost:301.84},
+      {date:"2024-12-11", btc:0.010222, usd_cost:1000.00},
+      {date:"2024-12-19", btc:0.009125, usd_cost:900.00},
+      {date:"2025-02-02", btc:0.005723, usd_cost:500.50},
+      {date:"2025-02-04", btc:0.006731, usd_cost:559.00},
+      {date:"2025-11-04", btc:0.010520, usd_cost:1078.92},
+      {date:"2025-11-04", btc:0.005280, usd_cost:538.50},
+      {date:"2025-11-04", btc:0.002580, usd_cost:262.00},
+      {date:"2025-11-04", btc:0.004960, usd_cost:500.00},
+      {date:"2025-11-04", btc:0.005000, usd_cost:500.00},
+      {date:"2025-11-05", btc:0.0098, usd_cost:1000.00}
     ];
 
     let lots = JSON.parse(localStorage.getItem('btc_lots') || 'null') || JSON.parse(JSON.stringify(INITIAL));
     let live = {price:NaN, provider:''};
     let newRowIdx = -1;
 
-    function save() {localStorage.setItem('btc_lots', JSON.stringify(lots));}
-    function fmt(n, d) {return Number.isFinite(n) ? n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}) : '-';}
+    function save() {
+      localStorage.setItem('btc_lots', JSON.stringify(lots));
+    }
+
+    function fmt(n, d) {
+      if (!Number.isFinite(n)) return '-';
+      return n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+    }
 
     async function getLivePrice() {
       try {
         let r = await fetch('https://api.coinbase.com/v2/prices/spot?currency=USD');
-        if (r.ok) {let j = await r.json(); let p = parseFloat(j.data.amount); if (Number.isFinite(p)) return {price:p, provider:'Coinbase'};}
+        if (r.ok) {
+          let j = await r.json();
+          let p = parseFloat(j.data.amount);
+          if (Number.isFinite(p)) return {price:p, provider:'Coinbase'};
+        }
       } catch(e) {}
       try {
         let r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
-        if (r.ok) {let j = await r.json(); let p = parseFloat(j.price); if (Number.isFinite(p)) return {price:p, provider:'Binance'};}
+        if (r.ok) {
+          let j = await r.json();
+          let p = parseFloat(j.price);
+          if (Number.isFinite(p)) return {price:p, provider:'Binance'};
+        }
+      } catch(e) {}
+      try {
+        let r = await fetch('https://api.coindesk.com/v1/bpi/currentprice/USD.json');
+        let j = await r.json();
+        return {price:parseFloat(j.bpi.USD.rate_float), provider:'CoinDesk'};
       } catch(e) {}
       return {price:NaN, provider:''};
     }
@@ -125,12 +147,12 @@
       if (cards) cards.innerHTML = '';
 
       const price = live.price;
-      let totBtc = 0, totCost = 0, totValue = 0;
+      let totBtc = 0, totCost = 0, totValue = 0, totPL = 0;
 
       if (newRowIdx >= 0) {
         const lot = lots[0];
         const tr = document.createElement('tr');
-        tr.className = 'new-row';
+        tr.classList.add('new-row');
 
         const td1 = document.createElement('td');
         const in1 = document.createElement('input');
@@ -140,33 +162,23 @@
         td1.appendChild(in1);
 
         const td2 = document.createElement('td');
-        const sel = document.createElement('select');
-        sel.innerHTML = '<option value="buy">BUY</option><option value="sell">SELL</option>';
-        sel.value = lot.type || 'buy';
-        sel.addEventListener('change', () => {lot.type = sel.value; save();});
-        td2.appendChild(sel);
-
-        const td3 = document.createElement('td');
         const in2 = document.createElement('input');
         in2.type = 'text';
         in2.inputMode = 'decimal';
         in2.addEventListener('change', () => {lot.btc = parseFloat(in2.value) || 0; save(); renderTable();});
-        td3.appendChild(in2);
+        td2.appendChild(in2);
 
-        const td4 = document.createElement('td');
+        const td3 = document.createElement('td');
         const in3 = document.createElement('input');
         in3.type = 'text';
         in3.inputMode = 'decimal';
         in3.addEventListener('change', () => {lot.usd_cost = parseFloat(in3.value) || 0; save(); renderTable();});
-        td4.appendChild(in3);
+        td3.appendChild(in3);
 
+        const td4 = document.createElement('td');
+        td4.textContent = '-';
         const td5 = document.createElement('td');
-        const in4 = document.createElement('input');
-        in4.type = 'text';
-        in4.value = lot.linked_to ? 'Links to BUY #' + lot.linked_to : 'N/A';
-        in4.readOnly = true;
-        td5.appendChild(in4);
-
+        td5.textContent = '-';
         const td6 = document.createElement('td');
         td6.textContent = '-';
         const td7 = document.createElement('td');
@@ -183,16 +195,71 @@
 
         tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9);
         tb.appendChild(tr);
+
+        if (cards) {
+          const card = document.createElement('div');
+          card.className = 'cardItem new-row';
+          const row = document.createElement('div');
+          row.className = 'row1';
+
+          const d1 = document.createElement('div');
+          const i1 = document.createElement('input');
+          i1.type = 'date';
+          i1.value = (lot.date || '').slice(0, 10);
+          i1.addEventListener('change', () => {lot.date = i1.value; save();});
+          d1.appendChild(i1);
+
+          const d2 = document.createElement('div');
+          const i2 = document.createElement('input');
+          i2.type = 'text';
+          i2.inputMode = 'decimal';
+          i2.placeholder = 'BTC';
+          i2.addEventListener('change', () => {lot.btc = parseFloat(i2.value) || 0; save(); renderTable();});
+          d2.appendChild(i2);
+
+          const d3 = document.createElement('div');
+          const i3 = document.createElement('input');
+          i3.type = 'text';
+          i3.inputMode = 'decimal';
+          i3.placeholder = 'USD';
+          i3.addEventListener('change', () => {lot.usd_cost = parseFloat(i3.value) || 0; save(); renderTable();});
+          d3.appendChild(i3);
+
+          row.append(d1, d2, d3);
+
+          const desc = document.createElement('div');
+          desc.textContent = 'New entry - fill in and click Apply';
+
+          const applyWrap = document.createElement('div');
+          applyWrap.style.display = 'flex';
+          applyWrap.style.gap = '8px';
+          const applyBtn = document.createElement('button');
+          applyBtn.textContent = 'Apply Entry';
+          applyBtn.style.flex = '1';
+          applyBtn.style.background = 'var(--accent)';
+          applyBtn.style.color = '#111';
+          applyBtn.addEventListener('click', () => {newRowIdx = -1; renderTable();});
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.textContent = 'Cancel';
+          cancelBtn.style.flex = '1';
+          cancelBtn.addEventListener('click', () => {lots.splice(0, 1); newRowIdx = -1; save(); renderTable();});
+
+          applyWrap.append(applyBtn, cancelBtn);
+          card.append(row, desc, applyWrap);
+          cards.appendChild(card);
+        }
       }
 
-      const sorted = [...lots].sort((a, b) => new Date(b.date || '0') - new Date(a.date || '0'));
-      
-      sorted.forEach(lot => {
-        if (newRowIdx >= 0 && lots[0] === lot) return;
-        
-        const tr = document.createElement('tr');
-        tr.className = lot.type || 'buy';
+      const sorted = [...lots].sort((a, b) => {
+        const dateA = new Date(a.date || '0000-00-00');
+        const dateB = new Date(b.date || '0000-00-00');
+        return dateB - dateA;
+      });
 
+      sorted.forEach((lot, idx) => {
+        if (newRowIdx >= 0 && lots[0] === lot && idx === 0) return;
+        const tr = document.createElement('tr');
         const td1 = document.createElement('td');
         const in1 = document.createElement('input');
         in1.type = 'date';
@@ -201,51 +268,32 @@
         td1.appendChild(in1);
 
         const td2 = document.createElement('td');
-        const sel = document.createElement('select');
-        sel.innerHTML = '<option value="buy">BUY</option><option value="sell">SELL</option>';
-        sel.value = lot.type || 'buy';
-        sel.addEventListener('change', () => {lot.type = sel.value; save(); renderTable();});
-        td2.appendChild(sel);
-
-        const td3 = document.createElement('td');
         const in2 = document.createElement('input');
         in2.type = 'text';
         in2.inputMode = 'decimal';
         in2.value = String(lot.btc || 0);
         in2.addEventListener('change', () => {lot.btc = parseFloat(in2.value) || 0; save(); renderTable();});
-        td3.appendChild(in2);
+        td2.appendChild(in2);
 
-        const td4 = document.createElement('td');
+        const td3 = document.createElement('td');
         const in3 = document.createElement('input');
         in3.type = 'text';
         in3.inputMode = 'decimal';
         in3.value = String(lot.usd_cost || 0);
         in3.addEventListener('change', () => {lot.usd_cost = parseFloat(in3.value) || 0; save(); renderTable();});
-        td4.appendChild(in3);
-
-        const td5 = document.createElement('td');
-        const in4 = document.createElement('input');
-        in4.type = 'text';
-        in4.value = lot.linked_to ? 'Links to BUY #' + lot.linked_to : 'N/A';
-        in4.readOnly = true;
-        td5.appendChild(in4);
+        td3.appendChild(in3);
 
         const imp = (lot.btc > 0) ? (lot.usd_cost / lot.btc) : NaN;
-        let pl, roi;
-        
-        if (lot.type === 'sell') {
-          const linkedBuy = lots.find((l, idx) => idx === (lot.linked_to - 1));
-          const costBasis = linkedBuy ? (linkedBuy.usd_cost / linkedBuy.btc) * lot.btc : 0;
-          pl = (lot.usd_cost || 0) - costBasis;
-          roi = (costBasis > 0) ? (pl / costBasis * 100) : NaN;
-        } else {
-          const val = Number.isFinite(price) ? (lot.btc * price) : NaN;
-          pl = Number.isFinite(val) ? (val - lot.usd_cost) : NaN;
-          roi = (lot.usd_cost > 0 && Number.isFinite(pl)) ? (pl / lot.usd_cost * 100) : NaN;
-        }
+        const val = Number.isFinite(price) ? (lot.btc * price) : NaN;
+        const pl = Number.isFinite(val) ? (val - lot.usd_cost) : NaN;
+        const roi = (lot.usd_cost > 0 && Number.isFinite(pl)) ? (pl / lot.usd_cost * 100) : NaN;
 
+        const td4 = document.createElement('td');
+        td4.textContent = fmt(imp, 2);
+        const td5 = document.createElement('td');
+        td5.textContent = fmt(price, 0);
         const td6 = document.createElement('td');
-        td6.textContent = fmt(imp, 2);
+        td6.textContent = fmt(val, 2);
         const td7 = document.createElement('td');
         td7.textContent = fmt(pl, 2);
         td7.className = Number.isFinite(pl) ? (pl >= 0 ? 'profit-pos' : 'profit-neg') : '';
@@ -268,31 +316,99 @@
         tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9);
         tb.appendChild(tr);
 
-        if (lot.type === 'buy') {
-          totBtc += Number(lot.btc) || 0;
-          totCost += Number(lot.usd_cost) || 0;
-          if (Number.isFinite(price)) totValue += (Number(lot.btc) || 0) * price;
-        } else {
-          totBtc -= Number(lot.btc) || 0;
+        if (cards) {
+          const card = document.createElement('div');
+          card.className = 'cardItem';
+          const row = document.createElement('div');
+          row.className = 'row1';
+
+          const d1 = document.createElement('div');
+          const i1 = document.createElement('input');
+          i1.type = 'date';
+          i1.value = (lot.date || '').slice(0, 10);
+          i1.addEventListener('change', () => {lot.date = i1.value; save(); renderTable();});
+          d1.appendChild(i1);
+
+          const d2 = document.createElement('div');
+          const i2 = document.createElement('input');
+          i2.type = 'text';
+          i2.inputMode = 'decimal';
+          i2.value = String(lot.btc || 0);
+          i2.addEventListener('change', () => {lot.btc = parseFloat(i2.value) || 0; save(); renderTable();});
+          d2.appendChild(i2);
+
+          const d3 = document.createElement('div');
+          const i3 = document.createElement('input');
+          i3.type = 'text';
+          i3.inputMode = 'decimal';
+          i3.value = String(lot.usd_cost || 0);
+          i3.addEventListener('change', () => {lot.usd_cost = parseFloat(i3.value) || 0; save(); renderTable();});
+          d3.appendChild(i3);
+
+          row.append(d1, d2, d3);
+
+          const desc = document.createElement('div');
+          desc.style.fontSize = '11px';
+          desc.style.color = 'var(--muted)';
+          desc.style.marginTop = '8px';
+          const impTxt = Number.isFinite(imp) ? '$' + fmt(imp, 2) : '-';
+          const valTxt = Number.isFinite(val) ? '$' + fmt(val, 2) : '-';
+          const plTxt = Number.isFinite(pl) ? (pl >= 0 ? '+$' : '-$') + fmt(Math.abs(pl), 2) : '-';
+          const roiTxt = Number.isFinite(roi) ? fmt(roi, 2) + '%' : '-';
+          desc.textContent = 'Entry ' + impTxt + ' | Value ' + valTxt + ' | P/L ' + plTxt + ' | ROI ' + roiTxt;
+
+          const delBtn2 = document.createElement('button');
+          delBtn2.textContent = 'Delete';
+          delBtn2.addEventListener('click', () => {
+            if (confirm('Delete ' + lot.date + '?')) {
+              lots.splice(lots.indexOf(lot), 1);
+              save();
+              renderTable();
+            }
+          });
+
+          card.append(row, desc, delBtn2);
+          cards.appendChild(card);
+        }
+
+        totBtc += Number(lot.btc) || 0;
+        totCost += Number(lot.usd_cost) || 0;
+        if (Number.isFinite(val)) {
+          totValue += val;
+          totPL += (val - (Number(lot.usd_cost) || 0));
         }
       });
 
       const avg = (totBtc > 0) ? (totCost / totBtc) : NaN;
+      const roiTot = (totCost > 0 && Number.isFinite(totPL)) ? (totPL / totCost * 100) : NaN;
+
+      document.getElementById('tTotBtc').textContent = fmt(totBtc, 6);
+      document.getElementById('tTotCost').textContent = fmt(totCost, 2);
+      document.getElementById('tAvg').textContent = fmt(avg, 2);
+      document.getElementById('tTotValue').textContent = fmt(totValue, 2);
+      document.getElementById('tTotPL').textContent = fmt(totPL, 2);
+      document.getElementById('tTotPL').className = Number.isFinite(totPL) ? (totPL >= 0 ? 'profit-pos' : 'profit-neg') : '';
+      document.getElementById('tTotROI').textContent = fmt(roiTot, 2) + '%';
+      document.getElementById('tTotROI').className = Number.isFinite(roiTot) ? (roiTot >= 0 ? 'profit-pos' : 'profit-neg') : '';
 
       document.getElementById('kpiBtc').textContent = fmt(totBtc, 6);
       document.getElementById('kpiCost').textContent = fmt(totCost, 2);
+      document.getElementById('kpiAvg').textContent = fmt(avg, 2);
       document.getElementById('kpiValue').textContent = fmt(totValue, 2);
-      document.getElementById('kpiPL').textContent = fmt(totValue - totCost, 2);
+      document.getElementById('kpiPL').textContent = fmt(totPL, 2);
+      document.getElementById('kpiPL').className = Number.isFinite(totPL) ? (totPL >= 0 ? 'profit-pos' : 'profit-neg') : '';
+      document.getElementById('kpiROI').textContent = fmt(roiTot, 2) + '%';
     }
 
     async function refreshPrice() {
       live = await getLivePrice();
       document.getElementById('livePrice').textContent = fmt(live.price, 0);
+      document.getElementById('lastUpdated').textContent = 'Last: ' + new Date().toLocaleTimeString();
       renderTable();
     }
 
     document.getElementById('btnAdd').addEventListener('click', () => {
-      lots.unshift({date:new Date().toISOString().slice(0, 10), type:'buy', btc:0, usd_cost:0, cost_basis:0});
+      lots.unshift({date:new Date().toISOString().slice(0, 10), btc:0, usd_cost:0});
       newRowIdx = 0;
       save();
       renderTable();
@@ -308,19 +424,22 @@
     document.getElementById('btnRefresh').addEventListener('click', refreshPrice);
 
     document.getElementById('btnShare').addEventListener('click', () => {
-      let totBtc = 0, totCost = 0, totValue = 0;
+      let totBtc = 0, totCost = 0, totValue = 0, totPL = 0;
       lots.forEach(l => {
-        if (l.type === 'buy') {
-          totBtc += Number(l.btc) || 0;
-          totCost += Number(l.usd_cost) || 0;
-          if (Number.isFinite(live.price)) totValue += (Number(l.btc) || 0) * live.price;
-        } else {
-          totBtc -= Number(l.btc) || 0;
-        }
+        totBtc += Number(l.btc) || 0;
+        totCost += Number(l.usd_cost) || 0;
+        if (Number.isFinite(live.price)) totValue += (Number(l.btc) || 0) * live.price;
       });
-      const text = 'BTC: ' + fmt(totBtc, 6) + '\nInvested: ' + fmt(totCost, 2) + '\nValue: ' + fmt(totValue, 2) + '\nP/L: ' + fmt(totValue - totCost, 2);
-      if (navigator.share) navigator.share({title:'BTC Tracker', text}).catch(() => {});
-      else {navigator.clipboard.writeText(text); alert('Copied');}
+      if (Number.isFinite(totValue)) totPL = totValue - totCost;
+      const avg = (totBtc > 0) ? (totCost / totBtc) : NaN;
+      const roiTot = (totCost > 0 && Number.isFinite(totPL)) ? (totPL / totCost * 100) : NaN;
+      const text = 'BTC: ' + fmt(totBtc, 6) + '\nCost: ' + fmt(totCost, 2) + '\nAVG: ' + fmt(avg, 2) + '\nValue: ' + fmt(totValue, 2) + '\nP/L: ' + fmt(totPL, 2) + ' (' + fmt(roiTot, 2) + '%)';
+      if (navigator.share) {
+        navigator.share({title:'BTC Tracker', text:text, url:location.href}).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('Copied to clipboard');
+      }
     });
 
     renderTable();
