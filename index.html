@@ -42,12 +42,10 @@
     .row1 > div{flex:1}
     .new-row{background:rgba(245,158,11,0.15);border-left:4px solid var(--accent)}
 
-    /* --- Filter toolbar --- */
+    /* Filter toolbar - cleaner */
     .filterBar{
-      position:sticky;top:0;z-index:10;
       display:flex;gap:8px;flex-wrap:wrap;align-items:center;
-      background:rgba(15,15,16,.75);backdrop-filter:blur(10px);
-      border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:12px
+      padding:10px;margin-bottom:12px;background:rgba(15,15,16,.5);border-radius:12px
     }
     .chips{
       display:flex;gap:6px;align-items:center;overflow:auto;scrollbar-width:none;flex:1
@@ -55,12 +53,11 @@
     .chips::-webkit-scrollbar{display:none}
     .chip{
       background:var(--chip);border:1px solid var(--border);color:var(--text);
-      padding:8px 12px;border-radius:999px;white-space:nowrap;user-select:none
+      padding:6px 10px;border-radius:999px;white-space:nowrap;user-select:none;font-size:12px;cursor:pointer
     }
     .chip.active{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
-    .filterBadge{font-size:12px;color:var(--muted);margin-left:auto}
 
-    /* Unified mobile-like sheet for all screens */
+    /* Sheet */
     .sheet{
       position:fixed;left:0;right:0;bottom:-100%;background:var(--panel);
       border-top:1px solid var(--border);padding:16px 12px;border-radius:16px 16px 0 0;
@@ -79,13 +76,16 @@
       .cards{display:block}
       .kpi{grid-template-columns:repeat(2,1fr)}
       h1{font-size:16px}
+      .filterBar{padding:8px}
+      .chips{gap:4px}
+      .chip{padding:6px 8px;font-size:11px}
     }
   </style>
 </head>
 <body>
   <header>
     <h1>BTC Position Tracker</h1>
-    <div class="sub">Live price + per-lot P/L, totals & average cost — with unified date filter.</div>
+    <div class="sub">Live price + per-lot P/L, totals & average cost.</div>
   </header>
   <main>
     <div class="row">
@@ -108,35 +108,30 @@
 
     <div class="row" style="margin-top:14px">
       <div class="card grow">
-        <!-- Sticky Filter Toolbar -->
-        <div class="filterBar" id="filterBar" role="region" aria-label="Date filter toolbar">
-          <div class="chips" id="chipRow" aria-label="Quick ranges">
-            <button class="chip" data-preset="ALL">All</button>
+        <div class="filterBar">
+          <div class="chips" id="chipRow">
+            <button class="chip active" data-preset="ALL">All</button>
             <button class="chip" data-preset="7D">7d</button>
             <button class="chip" data-preset="30D">30d</button>
-            <div class="divider" style="width:1px;height:24px;background:var(--border)"></div>
             <button class="chip" data-preset="THIS_MONTH">This month</button>
             <button class="chip" data-preset="YTD">YTD</button>
-            <button class="chip" data-preset="THIS_YEAR">This year</button>
-            <button class="chip" id="chipCustom" data-preset="CUSTOM">Custom…</button>
+            <button class="chip" data-preset="CUSTOM">Custom</button>
           </div>
-          <span class="filterBadge" id="filterBadge">All time</span>
         </div>
 
-        <!-- Unified Sheet (mobile style for all) -->
         <div class="sheetBackdrop" id="sheetBg"></div>
         <div class="sheet" id="sheet">
           <div class="sheetHeader">
-            <div class="sheetTitle">Custom range</div>
-            <button id="sheetClose">✕</button>
+            <div class="sheetTitle">Custom date range</div>
+            <button id="sheetClose" style="background:transparent;border:none;font-size:18px;cursor:pointer">✕</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input type="date" id="sheetFrom"/>
+            <input type="date" id="sheetTo"/>
           </div>
           <div style="display:flex;gap:8px">
-            <input class="mini" type="date" id="sheetFrom"/>
-            <input class="mini" type="date" id="sheetTo"/>
-          </div>
-          <div class="rowBtns" style="display:flex;gap:8px;margin-top:10px">
             <button id="sheetApply" class="primary" style="flex:1">Apply</button>
-            <button id="sheetClear" style="flex:1">Clear</button>
+            <button id="sheetClear" style="flex:1">Clear All</button>
           </div>
         </div>
 
@@ -145,7 +140,6 @@
           <button id="btnReset">Reset</button>
           <button id="btnRefresh" style="background:var(--accent);color:#000">Refresh Price</button>
           <button id="btnShare">Share</button>
-          <span class="filterBadge" id="activeRange" style="margin-left:auto"></span>
         </div>
 
         <div style="overflow:auto;margin-top:8px">
@@ -186,15 +180,12 @@
       {date:"2025-11-13", btc:0.00505, usd_cost:500.00},
       {date:"2025-11-13", btc:0.00507, usd_cost:500.00},
       {date:"2025-11-13", btc:0.00508, usd_cost:500.00},
-      {date:"2025-11-14", btc:0.00516, usd_cost:500.00}
+      {date:"2025-11-13", btc:0.00516, usd_cost:500.00}
     ];
 
-    // --- State ---
     let lots = JSON.parse(localStorage.getItem('btc_lots') || 'null') || JSON.parse(JSON.stringify(INITIAL));
     let live = {price:NaN, provider:''};
     let newRowIdx = -1;
-
-    // Filter state with preset
     let filter = JSON.parse(localStorage.getItem('btc_filter') || 'null') || {from:'', to:'', preset:'ALL'};
     const $ = id => document.getElementById(id);
 
@@ -202,14 +193,12 @@
     function saveFilter(){ localStorage.setItem('btc_filter', JSON.stringify(filter)); }
     function fmt(n,d){ if(!Number.isFinite(n)) return '-'; return n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
     const toYMD = s => (s||'').slice(0,10);
-
-    // Date helpers
     const todayYMD = () => new Date().toISOString().slice(0,10);
+
     function addDays(ymd, delta){ const d=new Date(ymd); d.setDate(d.getDate()+delta); return d.toISOString().slice(0,10); }
     function startOfMonth(ymd){ const d=new Date(ymd); d.setDate(1); return d.toISOString().slice(0,10); }
     function startOfYear(ymd){ const d=new Date(ymd); d.setMonth(0,1); return d.toISOString().slice(0,10); }
 
-    // Presets (no inline date boxes)
     function setQuickRange(preset){
       const today=todayYMD(); let from='', to='';
       switch(preset){
@@ -217,8 +206,8 @@
         case '7D': from=addDays(today,-6); to=today; break;
         case '30D': from=addDays(today,-29); to=today; break;
         case 'THIS_MONTH': from=startOfMonth(today); to=today; break;
-        case 'YTD': case 'THIS_YEAR': from=startOfYear(today); to=today; break;
-        case 'CUSTOM': default: openSheet(); return;
+        case 'YTD': from=startOfYear(today); to=today; break;
+        case 'CUSTOM': openSheet(); return;
       }
       filter={from,to,preset}; saveFilter(); updateFilterUI(); renderTable();
     }
@@ -229,9 +218,11 @@
       const b = filter.to   ? filter.to   : '9999-12-31';
       return ymd >= a && ymd <= b;
     }
-    function getFilteredLots(){ return (!filter.from && !filter.to) ? [...lots] : lots.filter(l => inRange(toYMD(l.date))); }
 
-    // Live price
+    function getFilteredLots(){
+      return (!filter.from && !filter.to) ? [...lots] : lots.filter(l => inRange(toYMD(l.date)));
+    }
+
     async function getLivePrice(){
       try{ const r=await fetch('https://api.coinbase.com/v2/prices/spot?currency=USD');
         if(r.ok){ const j=await r.json(); const p=parseFloat(j.data.amount); if(Number.isFinite(p)) return {price:p,provider:'Coinbase'};}
@@ -244,25 +235,17 @@
       return {price:NaN, provider:''};
     }
 
-    function badgeText(){
-      if(!filter.from && !filter.to) return 'All time';
-      const from = filter.from || '...'; const to = filter.to || '...';
-      return `${from} → ${to}`;
-    }
     function highlightPreset(){
       document.querySelectorAll('.chip').forEach(ch=>{
-        const active = ch.dataset.preset === filter.preset && filter.preset !== 'CUSTOM';
+        const active = ch.dataset.preset === filter.preset;
         ch.classList.toggle('active', active);
       });
-      const cc = $('chipCustom'); if(cc) cc.classList.toggle('active', filter.preset==='CUSTOM');
     }
+
     function updateFilterUI(){
-      $('filterBadge').textContent = badgeText();
-      $('activeRange').textContent = 'Range: ' + badgeText();
       highlightPreset();
     }
 
-    // Render table & KPIs
     function renderTable(){
       const tb=$('tbody'), cards=$('cards'); tb.innerHTML=''; if(cards) cards.innerHTML='';
       const price=live.price; let totBtc=0, totCost=0, totValue=0, totPL=0;
@@ -295,9 +278,9 @@
           const d3=document.createElement('div'); const i3=document.createElement('input');
           i3.type='text'; i3.inputMode='decimal'; i3.placeholder='USD'; i3.addEventListener('change',()=>{lot.usd_cost=parseFloat(i3.value)||0; save(); renderTable();}); d3.appendChild(i3);
           row.append(d1,d2,d3);
-          const desc=document.createElement('div'); desc.textContent='New entry - fill in and click Apply';
+          const desc=document.createElement('div'); desc.textContent='New entry - fill in and click Save';
           const wrap=document.createElement('div'); wrap.style.display='flex'; wrap.style.gap='8px';
-          const apply=document.createElement('button'); apply.textContent='Apply Entry'; apply.style.flex='1'; apply.style.background='var(--accent)'; apply.style.color='#111';
+          const apply=document.createElement('button'); apply.textContent='Save'; apply.style.flex='1'; apply.style.background='var(--accent)'; apply.style.color='#111';
           apply.addEventListener('click',()=>{newRowIdx=-1; renderTable();});
           const cancel=document.createElement('button'); cancel.textContent='Cancel'; cancel.style.flex='1';
           cancel.addEventListener('click',()=>{lots.splice(0,1); newRowIdx=-1; save(); renderTable();});
@@ -305,38 +288,33 @@
         }
       }
 
-      const visible=getFilteredLots().sort((a,b)=>{const A=new Date(toYMD(a.date)||'1970-01-01'); const B=new Date(toYMD(b.date)||'1970-01-01'); return B-A;});
+      const visible=getFilteredLots().sort((a,b)=>new Date(toYMD(b.date)||'1970-01-01')-new Date(toYMD(a.date)||'1970-01-01'));
       visible.forEach(lot=>{
         if(newRowIdx>=0 && lots[0]===lot) return;
         const tr=document.createElement('tr');
-
         const td1=document.createElement('td'); const in1=document.createElement('input');
         in1.type='date'; in1.value=toYMD(lot.date); in1.addEventListener('change',()=>{lot.date=in1.value; save(); renderTable();}); td1.appendChild(in1);
-
         const td2=document.createElement('td'); const in2=document.createElement('input');
         in2.type='text'; in2.inputMode='decimal'; in2.value=String(lot.btc||0);
         in2.addEventListener('change',()=>{lot.btc=parseFloat(in2.value)||0; save(); renderTable();}); td2.appendChild(in2);
-
         const td3=document.createElement('td'); const in3=document.createElement('input');
         in3.type='text'; in3.inputMode='decimal'; in3.value=String(lot.usd_cost||0);
         in3.addEventListener('change',()=>{lot.usd_cost=parseFloat(in3.value)||0; save(); renderTable();}); td3.appendChild(in3);
 
         const imp=(lot.btc>0)?(lot.usd_cost/lot.btc):NaN;
-        const val=Number.isFinite(live.price)?(lot.btc*live.price):NaN;
-        const pl =Number.isFinite(val)?(val-lot.usd_cost):NaN;
+        const val=Number.isFinite(price)?(lot.btc*price):NaN;
+        const pl=Number.isFinite(val)?(val-lot.usd_cost):NaN;
         const roi=(lot.usd_cost>0 && Number.isFinite(pl))?(pl/lot.usd_cost*100):NaN;
 
         const td4=document.createElement('td'); td4.textContent=fmt(imp,2);
-        const td5=document.createElement('td'); td5.textContent=fmt(live.price,0);
+        const td5=document.createElement('td'); td5.textContent=fmt(price,0);
         const td6=document.createElement('td'); td6.textContent=fmt(val,2);
         const td7=document.createElement('td'); td7.textContent=fmt(pl,2); td7.className=Number.isFinite(pl)?(pl>=0?'profit-pos':'profit-neg'):'';
         const td8=document.createElement('td'); td8.textContent=Number.isFinite(roi)?fmt(roi,2)+'%':'-'; td8.className=Number.isFinite(roi)?(roi>=0?'profit-pos':'profit-neg'):'';
-
         const td9=document.createElement('td'); const del=document.createElement('button'); del.textContent='X';
-        del.addEventListener('click',()=>{ if(confirm('Delete '+(toYMD(lot.date)||'')+'?')){ lots.splice(lots.indexOf(lot),1); save(); renderTable(); }});
+        del.addEventListener('click',()=>{ if(confirm('Delete?')){ lots.splice(lots.indexOf(lot),1); save(); renderTable(); }});
         td9.appendChild(del);
-
-        tr.append(td1,td2,td3,td4,td5,td6,td7,td8,td9); $('tbody').appendChild(tr);
+        tr.append(td1,td2,td3,td4,td5,td6,td7,td8,td9); tb.appendChild(tr);
 
         if($('cards')){
           const card=document.createElement('div'); card.className='cardItem';
@@ -348,16 +326,14 @@
           const d3=document.createElement('div'); const i3=document.createElement('input');
           i3.type='text'; i3.inputMode='decimal'; i3.value=String(lot.usd_cost||0); i3.addEventListener('change',()=>{lot.usd_cost=parseFloat(i3.value)||0; save(); renderTable();}); d3.appendChild(i3);
           row.append(d1,d2,d3);
-
           const desc=document.createElement('div'); desc.style.fontSize='11px'; desc.style.color='var(--muted)'; desc.style.marginTop='8px';
           const impTxt=Number.isFinite(imp)?'$'+fmt(imp,2):'-';
           const valTxt=Number.isFinite(val)?'$'+fmt(val,2):'-';
           const plTxt=Number.isFinite(pl)?(pl>=0?'+$':'-$')+fmt(Math.abs(pl),2):'-';
           const roiTxt=Number.isFinite(roi)?fmt(roi,2)+'%':'-';
           desc.textContent='Entry '+impTxt+' | Value '+valTxt+' | P/L '+plTxt+' | ROI '+roiTxt;
-
           const del2=document.createElement('button'); del2.textContent='Delete';
-          del2.addEventListener('click',()=>{ if(confirm('Delete '+(toYMD(lot.date)||'')+'?')){ lots.splice(lots.indexOf(lot),1); save(); renderTable(); }});
+          del2.addEventListener('click',()=>{ if(confirm('Delete?')){ lots.splice(lots.indexOf(lot),1); save(); renderTable(); }});
           card.append(row,desc,del2); $('cards').appendChild(card);
         }
 
@@ -375,7 +351,6 @@
       $('tTotValue').textContent=fmt(totValue,2);
       $('tTotPL').textContent=fmt(totPL,2);
       $('tTotPL').className=Number.isFinite(totPL)?(totPL>=0?'profit-pos':'profit-neg'):'';
-
       const roiTotTxt=Number.isFinite(roiTot)?fmt(roiTot,2)+'%':'-';
       $('tTotROI').textContent=roiTotTxt;
       $('tTotROI').className=Number.isFinite(roiTot)?(roiTot>=0?'profit-pos':'profit-neg'):'';
@@ -392,11 +367,10 @@
     async function refreshPrice(){
       live = await getLivePrice();
       $('livePrice').textContent = fmt(live.price,0) + (live.provider ? ` (${live.provider})` : '');
-      $('lastUpdated').textContent = 'Last: ' + new Date().toLocaleTimeString() + (Number.isFinite(live.price)?'':' • Price N/A');
+      $('lastUpdated').textContent = 'Last: ' + new Date().toLocaleTimeString() + (Number.isFinite(live.price)?'':' • N/A');
       renderTable();
     }
 
-    // Actions
     $('btnAdd').addEventListener('click',()=>{ lots.unshift({date:todayYMD(), btc:0, usd_cost:0}); newRowIdx=0; save(); renderTable(); });
     $('btnReset').addEventListener('click',()=>{ lots=JSON.parse(JSON.stringify(INITIAL)); newRowIdx=-1; save(); renderTable(); });
     $('btnRefresh').addEventListener('click',refreshPrice);
@@ -407,15 +381,13 @@
       if(Number.isFinite(totV)) totP=totV-totC;
       const avg=(totB>0)?(totC/totB):NaN;
       const roi=(totC>0 && Number.isFinite(totP))?(totP/totC*100):NaN;
-      const text='Range: '+badgeText()+'\nBTC: '+fmt(totB,6)+'\nCost: '+fmt(totC,2)+'\nAVG: '+fmt(avg,2)+'\nValue: '+fmt(totV,2)+'\nP/L: '+fmt(totP,2)+' ('+(Number.isFinite(roi)?fmt(roi,2)+'%':'-')+')';
+      const text='BTC: '+fmt(totB,6)+'\nCost: '+fmt(totC,2)+'\nAVG: '+fmt(avg,2)+'\nValue: '+fmt(totV,2)+'\nP/L: '+fmt(totP,2)+' ('+(Number.isFinite(roi)?fmt(roi,2)+'%':'-')+')';
       if(navigator.share){ navigator.share({title:'BTC Tracker', text:text, url:location.href}).catch(()=>{}); }
-      else { navigator.clipboard.writeText(text); alert('Copied to clipboard'); }
+      else { navigator.clipboard.writeText(text); alert('Copied'); }
     });
 
-    // Chips
     document.querySelectorAll('.chip').forEach(ch=> ch.addEventListener('click',e=> setQuickRange(e.currentTarget.dataset.preset)));
 
-    // Unified Sheet
     function openSheet(){
       $('sheetFrom').value = filter.from || '';
       $('sheetTo').value   = filter.to   || '';
@@ -432,7 +404,6 @@
     });
     $('sheetClear').addEventListener('click',()=>{ filter={from:'',to:'',preset:'ALL'}; saveFilter(); updateFilterUI(); renderTable(); closeSheet(); });
 
-    // Init
     updateFilterUI();
     refreshPrice();
     renderTable();
